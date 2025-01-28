@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Robot Controls</title>
+</head>
+<body>
+<div style="text-align: center;">
+    <p>Robot Controls</p>
+    <button class="button" ontouchstart="call('f')" ontouchend="call('s')" onmouseup="call('s')" onmousedown="call('f')">Forward</button>
+    <br>
+    <button class="button" ontouchstart="call('l')" ontouchend="call('s')" onmouseup="call('s')" onmousedown="call('l')">Left</button>
+    <button class="button" ontouchstart="call('s')" onmousedown="call('s')">Stop</button>
+    <button class="button" ontouchstart="call('r')" ontouchend="call('s')" onmouseup="call('s')" onmousedown="call('r')">Right</button>
+    <br>
+    <button class="button" ontouchstart="call('b')" ontouchend="call('s')" onmouseup="call('s')" onmousedown="call('b')">Backward</button>
+    <br>
+    <br>
+    <div class="slidecontainer">
+        <label for="speed">Speed Slider</label>
+        <br>
+        <input type="range" min="50" max="100" value="80" id="speed" class="slider" oninput="speed()">
+    </div>
+    <br>
+    <div style="text-align: center;">
+        <label for="name">Type in your name:</label>
+        <br>
+        <input class="input" type="text" id="name">
+        <button class="hello" onclick="say()">Say Hello!</button>
+    </div>
+</div>
+</body>
+<script>
+    var slider = document.getElementById("speed");
+
+    function call(cmd) {
+        fetch('/' + cmd, {
+            method: 'GET'
+        });
+    }
+
+    function say() {
+        var name = document.getElementById("name").value;
+        fetch('/hello/' + name, {
+            method: 'GET'
+        });
+    }
+
+    function speed() {
+        var speed_value = slider.value;
+        fetch('/setspeed/' + speed_value, {
+            method: 'GET'
+        });
+    }
+</script>
+<style>
+    .button {
+        height: 250px;
+        width: 250px;
+        background-color: #88ff88;
+        border: solid;
+        border-color: #003300;
+        border-width: 1px;
+        border-radius: 5px;
+        font-size: 50px;
+    }
+    .button:hover {
+        background-color: #66ff66;
+    }
+    .hello {
+        height: 100px;
+        width: 250px;
+        background-color: #88ff88;
+        border: solid;
+        border-color: #003300;
+        border-width: 1px;
+        border-radius: 5px;
+        font-size: 50px;
+        vertical-align: middle;
+    }
+    .hello:hover {
+        background-color: #66ff66;
+    }
+    .input {
+        height: 100px;
+        width: 400px;
+        background-color: #88ff88;
+        border: solid;
+        border-color: #003300;
+        border-width: 1px;
+        border-radius: 5px;
+        font-size: 50px;
+        vertical-align: middle;
+    }
+    body {
+        background-image: url("matrix.avif");
+        -webkit-touch-callout: none; /* Safari */
+        -webkit-user-select: none; /* Chrome */
+        -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none;
+        font-size: 50px;
+    }
+    p {
+        color: #00dd00;
+    }
+    label {
+        color: #00dd00;
+    }
+    .slider {
+        -webkit-appearance: none;
+        width: 400px;
+        height: 25px;
+        background: #88ff88;
+        outline: none;
+    }
+
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 50px;
+        height: 30px;
+        background: #007700;
+        cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+        background: #04AA6D;
+        cursor: pointer;
+    }
+</style>
+</html>
+

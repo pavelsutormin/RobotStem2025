@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Robot Controls</title>
+</head>
+<body>
+<div style="text-align: center;">
+  <p style="font-size: 25px;">Robot Controls</p>
+  <div id="joystick" style="
+    position: absolute;
+    border-width: medium;
+    border-color: black;
+    border-style: solid;
+    width: 100px;
+    height: 100px;
+    left: calc(50% - 50px);
+  ">
+    <svg style="width: 100px; height: 100px;" id="joystickSvg">
+      <circle r="10" cx="50" cy="50" fill="black" id="joystickInner"></circle>
+    </svg>
+  </div>
+</div>
+<textarea style="
+    position: absolute;
+    border-width: medium;
+    border-color: black;
+    border-style: solid;
+    width: 400px;
+    height: 400px;
+    top: 550px;
+    left: calc(50% - 200px);
+" id="textarea"></textarea>
+</body>
+<script>
+  const width = 400;
+  const height = 400;
+  const radius = 30;
+
+  var joystick = document.getElementById("joystick");
+  var joystickSvg = document.getElementById("joystickSvg");
+  var joystickInner = document.getElementById("joystickInner");
+  joystickInner.setAttribute("r", radius);
+  joystickInner.setAttribute("cx", width / 2);
+  joystickInner.setAttribute("cy", height / 2);
+
+  joystick.style.width = `${width}px`;
+  joystick.style.height = `${height}px`;
+  joystick.style.left = `calc(50% - ${width / 2}px)`;
+
+  joystickSvg.style.width = `${width}px`;
+  joystickSvg.style.height = `${height}px`;
+
+  var moving = false;
+  joystick.addEventListener("mousedown", down);
+  joystick.addEventListener("touchstart", down);
+  document.addEventListener("mouseup", up);
+  document.addEventListener("touchend", up);
+  document.addEventListener("mousemove", move);
+  document.addEventListener("touchmove", move);
+  function down(event) {
+    event.preventDefault();
+    console.log("down");
+    moving = true;
+    move(event);
+  }
+  function up(event) {
+    event.preventDefault();
+    console.log("up");
+    if (moving) {
+      call(0, 0);
+      setTimeout(() => {
+        if (!moving) {
+          call(0, 0);
+        }
+      }, 200);
+    }
+    moving = false;
+    joystickInner.setAttribute("cx", width / 2);
+    joystickInner.setAttribute("cy", height / 2);
+  }
+  function move(event) {
+    event.preventDefault();
+    var bounds = joystick.getBoundingClientRect();
+    var clientX = event.clientX;
+    var clientY = event.clientY;
+    if (clientX === undefined && clientY === undefined) {
+        clientX = event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
+    }
+    console.log("Move: " + clientX + ", " + clientY + ", " + height + ", " + width);
+    if (moving) {
+      // X-axis
+      if (clientX - bounds.left > width - radius) {
+        joystickInner.setAttribute("cx", width - radius);
+      } else if (clientX - bounds.left < radius) {
+        joystickInner.setAttribute("cx", radius);
+      } else {
+        var newCx = clientX - bounds.left;
+        if (newCx < width / 4) {
+          newCx = radius;
+        } else if (newCx > width - (width / 4)) {
+          newCx = width - radius;
+        } else {
+          newCx = width / 2;
+        }
+        joystickInner.setAttribute("cx", newCx);
+      }
+      // Y-axis
+      if (clientY - bounds.top > height - radius) {
+        joystickInner.setAttribute("cy", height - radius);
+      } else if (clientY - bounds.top < radius) {
+        joystickInner.setAttribute("cy", radius);
+      } else {
+        joystickInner.setAttribute("cy", clientY - bounds.top);
+      }
+    }
+    if (!moving) {
+      joystickInner.setAttribute("cx", width / 2);
+      joystickInner.setAttribute("cy", height / 2);
+    }
+    if (moving) {
+      call(joystickInner.getAttribute("cx") - width / 2, joystickInner.getAttribute("cy") - height / 2);
+    }
+  }
+
+  function call(x, y) {
+    var xShift = x / (width / 2 - radius);
+    var yShift = -y / (height / 2 - radius);
+    print("Move: " + xShift + ", " + yShift);
+    fetch('/move?x=' + xShift + '&y=' + yShift, {
+      method: 'GET'
+    });
+  }
+
+    function print(line) {
+        var textarea = document.getElementById("textarea");
+        textarea.value += line + "\n";
+        textarea.scrollTop = textarea.scrollHeight;
+    }
+</script>
+</html>
