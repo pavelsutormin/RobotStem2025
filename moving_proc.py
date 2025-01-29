@@ -57,7 +57,6 @@ def __turn__(pos):
 
 
 def __forward__(dutyCyclePercentage):
-    print("forward: " + str(dutyCyclePercentage))
     p1.ChangeDutyCycle(dutyCyclePercentage)
     p2.ChangeDutyCycle(dutyCyclePercentage)
     GPIO.output(in_f1,GPIO.HIGH)
@@ -66,20 +65,27 @@ def __forward__(dutyCyclePercentage):
     GPIO.output(in_b2,GPIO.LOW)
 
 def __stop__():
-    print("stop")
     GPIO.output(in_f1,GPIO.LOW)
     GPIO.output(in_b1,GPIO.LOW)
     GPIO.output(in_f2,GPIO.LOW)
     GPIO.output(in_b2,GPIO.LOW)
 
 def __backward__(dutyCyclePercentage):
-    print("backward: " + str(dutyCyclePercentage))
     p1.ChangeDutyCycle(dutyCyclePercentage)
     p2.ChangeDutyCycle(dutyCyclePercentage)
     GPIO.output(in_f1,GPIO.LOW)
     GPIO.output(in_b1,GPIO.HIGH)
     GPIO.output(in_f2,GPIO.LOW)
     GPIO.output(in_b2,GPIO.HIGH)
+
+def __move__(m):
+    global speed
+    if m > 0:
+        __forward__(m * speed)
+    elif m < 0:
+        __backward__(abs(m * speed))
+    else:
+        __stop__()
 
 def turn_thread():
     global turn_pos_current, turn_pos_new
@@ -91,19 +97,14 @@ def turn_thread():
         else:
             sleep(0.05)
 
-def move_thread(do_pause, stop_time, move_time):
-    global turn_pos_current, turn_pos_new
+def move_thread(do_pause, move_time, idle_time, idle_speed):
+    global move_speed
     while True:
-        if move_speed > 0:
-            __forward__(move_speed * speed)
-        elif move_speed < 0:
-            __backward__(abs(move_speed * speed))
-        else:
-            __stop__()
+        __move__(move_speed)
         if do_pause:
             sleep(move_time)
-            __stop__()
-            sleep(stop_time)
+            __move__(idle_speed * move_speed)
+            sleep(idle_time)
         else:
             sleep(0.05)
 
@@ -112,19 +113,27 @@ def turn(p):
     turn_pos_new = p
 
 def move(s):
-    global move_speed
+    global move_speed, speed
+    if s > 0:
+        print("forward: " + str(s * speed))
+    elif s < 0:
+        print("backward: " + str(s * speed))
+    else:
+        print("stop")
     move_speed = s
 
 def stop():
-    __stop__()
+    global move_speed
+    print("stop")
+    move_speed = 0
 
 def change_speed(spd):
     global speed
     speed = spd
 
-def start_moving_proc(do_pause, stop_time, move_time):
+def start_moving_proc(do_pause, move_time=0.05, idle_time=0, idle_speed=0):
     servoPwm.start(getDutyCyclePercentage(0))
     t1 = threading.Thread(target=turn_thread)
     t1.start()
-    t2 = threading.Thread(target=move_thread, args=(do_pause, stop_time, move_time))
+    t2 = threading.Thread(target=move_thread, args=(do_pause, move_time, idle_time, idle_speed))
     t2.start()

@@ -89,6 +89,5 @@ def move_server():
 
 
 if __name__ == '__main__':
-    moving_proc.start_moving_proc(True, 0.1, 0.2)
+    moving_proc.start_moving_proc(True, 0.01, 0.02, 0)
     app.run(host=server_ip, port=server_port, debug=True)
-
