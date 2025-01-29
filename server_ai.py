@@ -133,7 +133,7 @@ def loop():
             '''
             c = (c1 + c2) / 2
             print(f"Centers: {c1} + {c2} -> {c}")
-            if c > 0.4:
+            '''if c > 0.4:
                 if object_type == "clock":
                     print(f"Move left!")
                     moving_proc.turn(-1)
@@ -149,7 +149,12 @@ def loop():
                     moving_proc.turn(-1)
             else:
                 print("Move straight!")
-                moving_proc.turn(0)
+                moving_proc.turn(0)'''
+
+            turn_dir = max(min(c * 2, 1), -1)
+            if object_type == "clock":
+                turn_dir = -turn_dir
+            moving_proc.turn(turn_dir)
 
             if object_type == "clock":
                 print(f"Move backward!")
