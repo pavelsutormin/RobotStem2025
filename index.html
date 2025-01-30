@@ -6,130 +6,147 @@
 </head>
 <body>
 <div style="text-align: center;">
-    <p>Robot Controls</p>
-    <button class="button" ontouchstart="call('f')" ontouchend="call('s')" onmouseup="call('s')" onmousedown="call('f')">Forward</button>
-    <br>
-    <button class="button" ontouchstart="call('l')" ontouchend="call('s')" onmouseup="call('s')" onmousedown="call('l')">Left</button>
-    <button class="button" ontouchstart="call('s')" onmousedown="call('s')">Stop</button>
-    <button class="button" ontouchstart="call('r')" ontouchend="call('s')" onmouseup="call('s')" onmousedown="call('r')">Right</button>
-    <br>
-    <button class="button" ontouchstart="call('b')" ontouchend="call('s')" onmouseup="call('s')" onmousedown="call('b')">Backward</button>
-    <br>
-    <br>
-    <div class="slidecontainer">
-        <label for="speed">Speed Slider</label>
-        <br>
-        <input type="range" min="50" max="100" value="80" id="speed" class="slider" oninput="speed()">
-    </div>
-    <br>
-    <div style="text-align: center;">
-        <label for="name">Type in your name:</label>
-        <br>
-        <input class="input" type="text" id="name">
-        <button class="hello" onclick="say()">Say Hello!</button>
+    <p style="font-size: 25px;">Robot Controls</p>
+    <div id="joystick" style="
+    position: absolute;
+    border-width: medium;
+    border-color: black;
+    border-style: solid;
+    width: 100px;
+    height: 100px;
+    left: calc(50% - 50px);
+  ">
+        <svg style="width: 100px; height: 100px;" id="joystickSvg">
+            <circle r="10" cx="50" cy="50" fill="black" id="joystickInner"></circle>
+        </svg>
     </div>
 </div>
+<textarea style="
+    position: absolute;
+    border-width: medium;
+    border-color: black;
+    border-style: solid;
+    width: 400px;
+    height: 300px;
+    top: 550px;
+    left: calc(50% - 200px);
+" id="textarea"></textarea>
 </body>
 <script>
-    var slider = document.getElementById("speed");
+    const width = 400;
+    const height = 400;
+    const radius = 30;
 
-    function call(cmd) {
-        fetch('/' + cmd, {
-            method: 'GET'
-        });
+    var joystick = document.getElementById("joystick");
+    var joystickSvg = document.getElementById("joystickSvg");
+    var joystickInner = document.getElementById("joystickInner");
+    joystickInner.setAttribute("r", radius);
+    joystickInner.setAttribute("cx", width / 2);
+    joystickInner.setAttribute("cy", height / 2);
+
+    joystick.style.width = `${width}px`;
+    joystick.style.height = `${height}px`;
+    joystick.style.left = `calc(50% - ${width / 2}px)`;
+
+    joystickSvg.style.width = `${width}px`;
+    joystickSvg.style.height = `${height}px`;
+
+    var prevShiftX = 0;
+    var prevShiftY = 0;
+
+    var moving = false;
+    joystick.addEventListener("mousedown", down);
+    joystick.addEventListener("touchstart", down);
+    document.addEventListener("mouseup", up);
+    document.addEventListener("touchend", up);
+    document.addEventListener("mousemove", move);
+    document.addEventListener("touchmove", move);
+    function down(event) {
+      event.preventDefault();
+      console.log("down");
+      moving = true;
+      move(event);
+    }
+    function up(event) {
+      event.preventDefault();
+      console.log("up");
+      if (moving) {
+        call(0, 0);
+      }
+      moving = false;
+      joystickInner.setAttribute("cx", width / 2);
+      joystickInner.setAttribute("cy", height / 2);
+    }
+    function move(event) {
+      event.preventDefault();
+      var bounds = joystick.getBoundingClientRect();
+      var clientX = event.clientX;
+      var clientY = event.clientY;
+      if (clientX === undefined && clientY === undefined) {
+          clientX = event.touches[0].clientX;
+          clientY = event.touches[0].clientY;
+      }
+      console.log("Move: " + clientX + ", " + clientY + ", " + height + ", " + width);
+      if (moving) {
+        // X-axis
+        if (clientX - bounds.left > width - radius) {
+          joystickInner.setAttribute("cx", width - radius);
+        } else if (clientX - bounds.left < radius) {
+          joystickInner.setAttribute("cx", radius);
+        } else {
+          var newCx = clientX - bounds.left;
+          if (newCx < width / 4) {
+            newCx = radius;
+          } else if (newCx > width - (width / 4)) {
+            newCx = width - radius;
+          } else {
+            newCx = width / 2;
+          }
+          joystickInner.setAttribute("cx", newCx);
+        }
+        // Y-axis
+        if (clientY - bounds.top > height - radius) {
+          joystickInner.setAttribute("cy", height - radius);
+        } else if (clientY - bounds.top < radius) {
+          joystickInner.setAttribute("cy", radius);
+        } else {
+          var newCy = clientY - bounds.top;
+          if (newCy < height / 4) {
+            newCy = radius;
+          } else if (newCy > height - (height / 4)) {
+            newCy = height - radius;
+          } else {
+            newCy = height / 2;
+          }
+          joystickInner.setAttribute("cy", newCy);
+        }
+      }
+      if (!moving) {
+        joystickInner.setAttribute("cx", width / 2);
+        joystickInner.setAttribute("cy", height / 2);
+      }
+      if (moving) {
+        call(joystickInner.getAttribute("cx") - width / 2, joystickInner.getAttribute("cy") - height / 2);
+      }
     }
 
-    function say() {
-        var name = document.getElementById("name").value;
-        fetch('/hello/' + name, {
+    function call(x, y) {
+      var xShift = x / (width / 2 - radius);
+      var yShift = -y / (height / 2 - radius);
+      if (xShift !== prevShiftX || yShift !== prevShiftY) {
+          print("Move: " + xShift + ", " + yShift);
+          fetch('/move?x=' + xShift + '&y=' + yShift, {
             method: 'GET'
-        });
+          });
+          prevShiftX = xShift;
+          prevShiftY = yShift;
+      }
     }
 
-    function speed() {
-        var speed_value = slider.value;
-        fetch('/setspeed/' + speed_value, {
-            method: 'GET'
-        });
-    }
+      function print(line) {
+          var textarea = document.getElementById("textarea");
+          textarea.value += line + "\n";
+          textarea.scrollTop = textarea.scrollHeight;
+      }
 </script>
-<style>
-    .button {
-        height: 250px;
-        width: 250px;
-        background-color: #88ff88;
-        border: solid;
-        border-color: #003300;
-        border-width: 1px;
-        border-radius: 5px;
-        font-size: 50px;
-    }
-    .button:hover {
-        background-color: #66ff66;
-    }
-    .hello {
-        height: 100px;
-        width: 250px;
-        background-color: #88ff88;
-        border: solid;
-        border-color: #003300;
-        border-width: 1px;
-        border-radius: 5px;
-        font-size: 50px;
-        vertical-align: middle;
-    }
-    .hello:hover {
-        background-color: #66ff66;
-    }
-    .input {
-        height: 100px;
-        width: 400px;
-        background-color: #88ff88;
-        border: solid;
-        border-color: #003300;
-        border-width: 1px;
-        border-radius: 5px;
-        font-size: 50px;
-        vertical-align: middle;
-    }
-    body {
-        background-image: url("matrix.avif");
-        -webkit-touch-callout: none; /* Safari */
-        -webkit-user-select: none; /* Chrome */
-        -moz-user-select: none; /* Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-        user-select: none;
-        font-size: 50px;
-    }
-    p {
-        color: #00dd00;
-    }
-    label {
-        color: #00dd00;
-    }
-    .slider {
-        -webkit-appearance: none;
-        width: 400px;
-        height: 25px;
-        background: #88ff88;
-        outline: none;
-    }
-
-    .slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 50px;
-        height: 30px;
-        background: #007700;
-        cursor: pointer;
-    }
-
-    .slider::-moz-range-thumb {
-        width: 25px;
-        height: 25px;
-        background: #04AA6D;
-        cursor: pointer;
-    }
-</style>
 </html>
-
