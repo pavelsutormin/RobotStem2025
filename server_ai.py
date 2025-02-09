@@ -1,3 +1,5 @@
+import threading
+
 import cv2
 import time
 import moving_proc
@@ -6,7 +8,10 @@ from pycoral.adapters.detect import get_objects
 from pycoral.utils.dataset import read_label_file
 from pycoral.utils.edgetpu import make_interpreter
 from pycoral.utils.edgetpu import run_inference
+from gpiozero import CPUTemperature
 import numpy as np
+import flask
+from flask import Flask
 
 
 default_model = 'mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite'
@@ -19,6 +24,8 @@ interpreter.allocate_tensors()
 labels = read_label_file(default_labels)
 inference_size = input_size(interpreter)
 print(inference_size)
+
+cpu = CPUTemperature()
 
 
 def getObjects(img, interpreter, labels, inference_size, threshold, top_k, needed_labels):
@@ -133,12 +140,51 @@ def loop():
             moving_proc.stop()
             is_moving = False
 
-        cv2.imshow("Output 1", np.concatenate((img1, img2), axis=1))
+        width_m = 800 - (img1.shape[1] + img2.shape[1])
+        img_m = np.zeros((img1.shape[0], width_m, 3), dtype=np.uint8)
+        img_top = np.concatenate((img1, img_m, img2), axis=1)
+
+        print(cpu.temperature)
+
+        temp = round(cpu.temperature, 1)
+
+        footer = np.zeros((150, img_top.shape[1], 3), dtype=np.uint8)
+        cv2.putText(footer, "Temp: " + str(temp), (5, 120),
+                    cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0, 255), 2)
+
+        img_full = np.concatenate((img_top, footer), axis=0)
+        cv2.imshow("Output", img_full)
+
         cv2.waitKey(1)
 
-
-if __name__ == "__main__":
-    moving_proc.start_moving_proc(True, 0.01, 0.02, 0)
+def run_loop():
     while True:
         loop()
         print("Something happened. Process is restarting...")
+
+server_ip = "192.168.86.184"
+server_port = 8080
+app = Flask(__name__)
+
+@app.route('/')
+def index_server():
+    return open("index_ai.html", "r").read()
+
+@app.route("/stop")
+def stop_server():
+    moving_proc.stop_moving_proc()
+    return "stop"
+
+@app.route("/restart")
+def restart_server():
+    moving_proc.restart_moving_proc()
+    return "restart"
+
+def serve():
+    app.run(host=server_ip, port=server_port, debug=True)
+
+if __name__ == "__main__":
+    moving_proc.start_moving_proc(True, 0.01, 0.02, 0)
+    # threading.Thread(target=run_loop).start()
+    # serve()
+    run_loop()

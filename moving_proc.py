@@ -6,6 +6,7 @@ turn_pos_current = 0
 turn_pos_new = 0
 speed = 100
 move_speed = 0
+is_moving_proc_active = True
 
 in_f1 = 24
 in_b1 = 23
@@ -88,25 +89,29 @@ def __move__(m):
         __stop__()
 
 def turn_thread():
-    global turn_pos_current, turn_pos_new
+    global turn_pos_current, turn_pos_new, is_moving_proc_active
     while True:
-        if turn_pos_current is not turn_pos_new:
-            __turn__(turn_pos_new)
+        if turn_pos_current is not turn_pos_new and is_moving_proc_active:
             turn_pos_current = turn_pos_new
+            __turn__(turn_pos_new)
             sleep(0.2)
         else:
             sleep(0.05)
 
 def move_thread(do_pause, move_time, idle_time, idle_speed):
-    global move_speed
+    global move_speed, is_moving_proc_active
     while True:
-        __move__(move_speed)
-        if do_pause:
-            sleep(move_time)
-            __move__(idle_speed * move_speed)
-            sleep(idle_time)
+        if is_moving_proc_active:
+            __move__(move_speed)
+            if do_pause:
+                sleep(move_time)
+                __move__(idle_speed * move_speed)
+                sleep(idle_time)
+            else:
+                sleep(0.05)
         else:
             sleep(0.05)
+
 
 def turn(p):
     global turn_pos_new
@@ -137,3 +142,16 @@ def start_moving_proc(do_pause, move_time=0.05, idle_time=0, idle_speed=0):
     t1.start()
     t2 = threading.Thread(target=move_thread, args=(do_pause, move_time, idle_time, idle_speed))
     t2.start()
+
+def stop_moving_proc():
+    global is_moving_proc_active
+    is_moving_proc_active = False
+    servoPwm.stop()
+    stop()
+    __stop__()
+
+def restart_moving_proc():
+    global is_moving_proc_active
+    servoPwm.start(getDutyCyclePercentage(turn_pos_current))
+    is_moving_proc_active = True
+
