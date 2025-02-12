@@ -37,8 +37,8 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(12, GPIO.OUT)
 servoFrequencyHertz = 50
 servoPwm = GPIO.PWM(12, servoFrequencyHertz)
-servoLeftPosition = 1.0
-servoRightPosition = 2.0
+servoLeftPosition = 1.3
+servoRightPosition = 1.8
 servoMsPerCycle = 1000 / servoFrequencyHertz
 
 def getDutyCyclePercentage(pos):
@@ -154,4 +154,3 @@ def restart_moving_proc():
     global is_moving_proc_active
     servoPwm.start(getDutyCyclePercentage(turn_pos_current))
     is_moving_proc_active = True
-
