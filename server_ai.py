@@ -1,5 +1,5 @@
 import threading
-
+import os
 import cv2
 import time
 import moving_proc
@@ -26,6 +26,11 @@ inference_size = input_size(interpreter)
 print(inference_size)
 
 cpu = CPUTemperature()
+
+sd_current_label = None
+sd_start_time = None
+sd_count = 0
+sd_happening = False
 
 
 def getObjects(img, interpreter, labels, inference_size, threshold, top_k, needed_labels):
@@ -78,6 +83,7 @@ def center(channel, objInfo, width):
 
 # Below determines the size of the live feed window that will be displayed on the Raspberry Pi OS
 def loop():
+    global sd_current_label, sd_start_time, sd_count, sd_happening
     cap = cv2.VideoCapture(0)
     print('Is opened:', cap.isOpened())
     print('Width:', cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -89,6 +95,8 @@ def loop():
     last_process_time = time.time()
     is_moving = False
     while cap.isOpened():
+        if sd_happening:
+            break
         success, img = cap.read()
         next_process_time = time.time()
         if not success:
@@ -117,6 +125,16 @@ def loop():
             c1 = center("Left", object_info_map1["stop sign"], 320)
             c2 = center("Right", object_info_map2["stop sign"], 320)
             object_type = "stop sign"
+
+        if object_type is not None and object_type is not sd_current_label:
+            sd_current_label = object_type
+            current_time = time.time()
+            time_diff = current_time - (sd_start_time if sd_start_time is not None else 0)
+            sd_start_time = current_time
+            if 0.5 <= time_diff <= 1:
+                sd_count += 1
+            else:
+                sd_count = 0
 
         if c1 is not None and c2 is not None:
             # We can move
@@ -149,18 +167,34 @@ def loop():
         temp = round(cpu.temperature, 1)
 
         footer = np.zeros((150, img_top.shape[1], 3), dtype=np.uint8)
-        cv2.putText(footer, "Temp: " + str(temp), (5, 120),
+        text = "Temp: " + str(temp)
+        if sd_count >= 5:
+            text = "Shutdown: " + str(10 - sd_count)
+        cv2.putText(footer, text, (5, 120),
                     cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0, 255), 2)
+
+        cv2.putText(footer, str(sd_count), (img_top.shape[1] - 20, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2)
 
         img_full = np.concatenate((img_top, footer), axis=0)
         cv2.imshow("Output", img_full)
 
         cv2.waitKey(1)
 
+        if sd_count >= 10:
+            sd_happening = True
+            moving_proc.stop_moving_proc()
+            os.system('shutdown -h +1')
+            return
+
+
 def run_loop():
-    while True:
+    global sd_happening
+    while not sd_happening:
         loop()
         print("Something happened. Process is restarting...")
+    print("Exiting...")
+
 
 server_ip = "192.168.86.184"
 server_port = 8080
